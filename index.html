@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GeoPortal epmapaq</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h1>GeoPortal EPMAPAQ <svg class="water-drop" viewBox="0 0 24 24" width="20" height="20"><path fill="#60a5fa" d="M12 2C12 2 5 11 5 16a7 7 0 0 0 14 0C19 11 12 2 12 2z"/></svg></h1>
+      <p>Módulo para datos en campo Inspecciones</p>
+    </div>
+    <div class="sidebar-section" id="layers-section">
+      <button id="btn-trazar-rutas" class="trazar-btn">Trazar rutas</button>
+      <h3>Capas del Proyecto</h3>
+      <ul id="layers-list" class="layers-list"></ul>
+      <p id="loading-tables" style="color:#666;font-size:12px;display:none;">Cargando capas...</p>
+    </div>
+    <div class="sidebar-section" id="search-section" style="display:none;">
+      <h3>Buscar en capa</h3>
+      <select id="search-table-select"></select>
+      <div class="filter-row" style="margin-top:8px;">
+        <input type="text" id="search-input" placeholder="Texto a buscar...">
+        <button id="btn-search">Buscar</button>
+        <button id="btn-clear-search" class="danger">X</button>
+      </div>
+      <div id="search-results"></div>
+      <button id="create-btn" class="create-btn">+ Nuevo registro</button>
+    </div>
+    <div class="sidebar-section" id="geo-info-section" style="display:none;">
+      <h3>Info de capa</h3>
+      <p id="geo-info-text" style="font-size:12px;color:#aaa;"></p>
+      <div id="geo-badge-container"></div>
+      <div id="feature-attr-panel" style="margin-top:8px;"></div>
+    </div>
+    <div class="sidebar-section">
+      <details class="setup" id="setup-details" style="display:none;">
+        <summary>SQL requerido</summary>
+        <p style="color:#777;font-size:11px;margin-top:6px;">Ejecuta en Supabase SQL Editor:</p>
+        <pre>GRANT USAGE ON SCHEMA epmapaq TO anon, authenticated;
+GRANT ALL ON ALL TABLES IN SCHEMA epmapaq TO anon, authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA epmapaq
+  GRANT ALL ON TABLES TO anon, authenticated;
+
+ALTER TABLE epmapaq.tabla DISABLE ROW LEVEL SECURITY;
+
+CREATE OR REPLACE FUNCTION get_schema_tables()
+RETURNS TABLE(table_name text)
+LANGUAGE sql AS $$
+  SELECT table_name
+  FROM information_schema.tables
+  WHERE table_schema = 'epmapaq';
+$$;
+
+</pre>
+      </details>
+    </div>
+    <div class="info-bar">
+      <div id="table-count" style="margin-bottom:4px;"></div>
+      <div id="feature-count"></div>
+    </div>
+  </div>
+
+  <div id="map"></div>
+  <div id="status" class="status-overlay"></div>
+  <div id="loading-overlay" class="loading-overlay"></div>
+
+  <div id="image-lightbox" class="lightbox-overlay" onclick="closeLightbox()">
+    <img id="lightbox-img" class="lightbox-img" onclick="event.stopPropagation()">
+    <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
+  </div>
+
+  <div id="camera-modal" class="camera-overlay">
+    <div class="camera-box">
+      <div class="camera-header">
+        <span>Tomar foto</span>
+        <button class="camera-close" id="btn-camera-close">&times;</button>
+      </div>
+      <div class="camera-body">
+        <video id="camera-video" autoplay playsinline></video>
+        <canvas id="camera-canvas" style="display:none;"></canvas>
+      </div>
+      <div class="camera-footer">
+        <button class="camera-switch" id="btn-camera-switch">Cambiar camara</button>
+        <button class="camera-capture" id="btn-camera-capture">Capturar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="create-modal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modal-title">Nuevo registro</h2>
+        <button class="modal-close" id="btn-close-modal">&times;</button>
+      </div>
+      <div class="modal-body" id="modal-form-fields"></div>
+      <div class="modal-footer">
+        <button class="btn-cancel" id="btn-cancel-modal">Cancelar</button>
+        <button class="btn-save" id="btn-save-record">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="pick-location-bar" class="pick-location-bar">
+    <span>Haga clic en el mapa para seleccionar la ubicacion del registro</span>
+    <button class="btn-pick-cancel" id="btn-cancel-pick">Cancelar</button>
+  </div>
+
+  <div id="route-panel" class="route-panel">
+    <div class="route-panel-header">
+      <h2>Trazar Ruta</h2>
+      <button class="modal-close" id="btn-close-route-panel">&times;</button>
+    </div>
+    <div class="route-panel-body">
+      <div class="route-mode-bar">
+        <button class="route-mode-btn active" data-mode="coords" id="mode-coords">Coordenadas</button>
+        <button class="route-mode-btn" data-mode="click" id="mode-click">Clic en mapa</button>
+        <button class="route-mode-btn" data-mode="search" id="mode-search">Buscar capa</button>
+        <button class="route-mode-btn" data-mode="gmaps" id="mode-gmaps">Link GMaps</button>
+      </div>
+
+      <div id="route-input-coords" class="route-input-section">
+        <div class="route-field-row">
+          <input type="number" step="any" id="input-lat" placeholder="Latitud" class="route-input-sm">
+          <input type="number" step="any" id="input-lng" placeholder="Longitud" class="route-input-sm">
+        </div>
+        <button id="btn-add-coord" class="route-add-btn">Agregar punto</button>
+      </div>
+
+      <div id="route-input-click" class="route-input-section" style="display:none;">
+        <p class="route-hint">Haga clic en el mapa para agregar un punto</p>
+      </div>
+
+      <div id="route-input-search" class="route-input-section" style="display:none;">
+        <select id="route-search-table">
+          <option value="catastro">Catastro</option>
+          <option value="medidores">Medidores</option>
+        </select>
+        <input type="text" id="route-search-input" placeholder="Buscar...">
+        <button id="btn-route-search" class="route-add-btn">Buscar</button>
+        <div id="route-search-results"></div>
+      </div>
+
+      <div id="route-input-gmaps" class="route-input-section" style="display:none;">
+        <input type="text" id="input-gmaps-link" placeholder="Link de Google Maps (corto o completo)">
+        <button id="btn-parse-gmaps" class="route-add-btn">Extraer coordenadas</button>
+      </div>
+
+      <div class="route-points-header">
+        <h3>Puntos de ruta</h3>
+        <span class="route-point-count" id="route-point-count">0</span>
+      </div>
+      <div id="route-points-list" class="route-points-list"></div>
+
+      <div class="route-actions">
+        <button id="btn-trazar-ruta" class="route-trazar-btn" disabled>Trazar ruta</button>
+        <button id="btn-clear-route" class="route-clear-btn">Limpiar</button>
+      </div>
+
+      <div id="route-result" class="route-result" style="display:none;">
+        <div class="route-info" id="route-info"></div>
+        <button id="btn-copy-gmaps-link" class="route-add-btn">Copiar link Google Maps</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
