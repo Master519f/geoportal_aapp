@@ -16,28 +16,17 @@ Write-Host ""
 function Resolve-Url($targetUrl) {
     try {
         $req = [System.Net.HttpWebRequest]::Create($targetUrl)
-        $req.Method = "HEAD"
+        $req.Method = "GET"
         $req.AllowAutoRedirect = $true
-        $req.Timeout = 15000
-        $req.UserAgent = "Mozilla/5.0"
+        $req.Timeout = 30000
+        $req.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        $req.Accept = "text/html"
         $resp = $req.GetResponse()
         $finalUrl = $resp.ResponseUri.AbsoluteUri
         $resp.Close()
         return @{ ok = $true; url = $finalUrl }
     } catch {
-        try {
-            $req2 = [System.Net.HttpWebRequest]::Create($targetUrl)
-            $req2.Method = "GET"
-            $req2.AllowAutoRedirect = $true
-            $req2.Timeout = 15000
-            $req2.UserAgent = "Mozilla/5.0"
-            $resp2 = $req2.GetResponse()
-            $finalUrl2 = $resp2.ResponseUri.AbsoluteUri
-            $resp2.Close()
-            return @{ ok = $true; url = $finalUrl2 }
-        } catch {
-            return @{ ok = $false; error = $_.Exception.Message }
-        }
+        return @{ ok = $false; error = $_.Exception.Message }
     }
 }
 

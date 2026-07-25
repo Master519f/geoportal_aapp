@@ -24,13 +24,35 @@
 
 const { createClient } = window.supabase || {};
 
-const SUPABASE_URL = 'https://befaumtpegfkwrephusu.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJlZmF1bXRwZWdma3dyZXBodXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4NTgyMDksImV4cCI6MjA5ODQzNDIwOX0.qxC1yhCNWdJ6cIPmtXjj8CB7YLU07ZV68QSfthSIRoI';
-const SCHEMA = 'epmapaq';
+let SUPABASE_URL = '';
+let SUPABASE_ANON_KEY = '';
+let SCHEMA = 'epmapaq';
+let PROXY_BASE = '';
+let FOTO_BUCKET = 'fotos-inspecciones';
+let supabaseClient = null;
+let supabasePublic = null;
 
-const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { db: { schema: SCHEMA } });
-const supabasePublic = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-const FOTO_BUCKET = 'fotos-inspecciones';
+async function loadConfig() {
+  const isLocal = window.location.hostname === 'localhost';
+  PROXY_BASE = isLocal ? '/proxy' : '';
+  try {
+    const cfgUrl = isLocal ? '/api/config.js' : '/api/config.js';
+    const resp = await fetch(cfgUrl);
+    const cfg = await resp.json();
+    SUPABASE_URL = cfg.SUPABASE_URL || SUPABASE_URL;
+    SUPABASE_ANON_KEY = cfg.SUPABASE_ANON_KEY || SUPABASE_ANON_KEY;
+    SCHEMA = cfg.SCHEMA || SCHEMA;
+    FOTO_BUCKET = cfg.FOTO_BUCKET || FOTO_BUCKET;
+    if (cfg.PROXY_BASE) PROXY_BASE = cfg.PROXY_BASE;
+  } catch (_) {}
+  if (!SUPABASE_URL) {
+    SUPABASE_URL = 'https://befaumtpegfkwrephusu.supabase.co';
+    SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJlZmF1bXRwZWdma3dyZXBodXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4NTgyMDksImV4cCI6MjA5ODQzNDIwOX0.qxC1yhCNWdJ6cIPmtXjj8CB7YLU07ZV68QSfthSIRoI';
+    if (!PROXY_BASE) PROXY_BASE = '/proxy';
+  }
+  supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { db: { schema: SCHEMA } });
+  supabasePublic = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
 
 let currentTable = null;
 let map = null;
@@ -1835,37 +1857,21 @@ function showRouteInputSection(mode) {
 async function resolveGoogleMapsShortLink(url) {
   if (!url.includes('maps.app.goo.gl') && !url.includes('goo.gl/maps')) return null;
 
+  const timeout = window.location.hostname === 'localhost' ? 20000 : 25000;
+
   const proxies = [
-    (u) => 'https://api.allorigins.win/get?url=' + encodeURIComponent(u),
-    (u) => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
-    (u) => 'https://corsproxy.io/?' + encodeURIComponent(u)
+    (u) => PROXY_BASE + '?url=' + encodeURIComponent(u),
   ];
 
   for (const buildUrl of proxies) {
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 20000);
-      const resp = await fetch(buildUrl(url), { signal: controller.signal, redirect: 'follow' });
+      const timer = setTimeout(() => controller.abort(), timeout);
+      const resp = await fetch(buildUrl(url), { signal: controller.signal });
       clearTimeout(timer);
       if (!resp.ok) continue;
-      const ct = resp.headers.get('content-type') || '';
-      if (ct.includes('json')) {
-        const data = await resp.json();
-        if (data.status && data.status.url && data.status.url.includes('google.com/maps')) return data.status.url;
-        if (data.contents) {
-          const found = data.contents.match(/https?:\/\/www\.google\.com\/maps[^"'\s<>]*/i);
-          if (found) return found[0].replace(/&amp;/g, '&');
-          const coordMatch = data.contents.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
-          if (coordMatch) return 'https://www.google.com/maps/@' + coordMatch[1] + ',' + coordMatch[2];
-        }
-      } else {
-        const text = await resp.text();
-        if (resp.url && resp.url.includes('google.com/maps')) return resp.url;
-        const found = text.match(/https?:\/\/www\.google\.com\/maps[^"'\s<>]*/i);
-        if (found) return found[0].replace(/&amp;/g, '&');
-        const coordMatch = text.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
-        if (coordMatch) return 'https://www.google.com/maps/@' + coordMatch[1] + ',' + coordMatch[2];
-      }
+      const data = await resp.json();
+      if (data.ok && data.url) return data.url;
     } catch (_) {}
   }
   return null;
@@ -2406,14 +2412,28 @@ document.getElementById('btn-parse-gmaps').addEventListener('click', async () =>
         return;
       }
     }
-    window.open(url, '_blank');
     inputEl.value = '';
-    inputEl.placeholder = 'Pegue aqui la URL de Google Maps...';
+    inputEl.placeholder = 'Pegue aqui la URL completa de Google Maps...';
     inputEl.focus();
-    showStatus('info', 'Se abrio Google Maps. Cuando cargue, copie la URL de la barra de direcciones y peguela aqui.');
+    showStatus('info', 'No se pudo resolver automaticamente. Abra el link en su navegador, copie la URL de la barra de direcciones y peguela aqui.');
   } else {
     showStatus('error', 'No se pudieron extraer coordenadas. Use formato: https://www.google.com/maps/search/-1.016,-79.456');
   }
+});
+
+document.getElementById('input-gmaps-link').addEventListener('paste', (e) => {
+  setTimeout(() => {
+    const inputEl = e.target;
+    const val = inputEl.value.trim();
+    if (!val) return;
+    const coords = parseGoogleMapsLink(val);
+    if (coords) {
+      addRoutePoint(coords.lat, coords.lng, 'Parada GMaps', 'stop');
+      inputEl.value = '';
+      inputEl.placeholder = 'Ingrese otro link de Google Maps...';
+      showStatus('success', `Coordenadas extraidas: ${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`);
+    }
+  }, 100);
 });
 
 document.getElementById('btn-route-search').addEventListener('click', () => {
@@ -2447,16 +2467,19 @@ document.getElementById('btn-copy-gmaps-link').addEventListener('click', () => {
   });
 });
 
-try {
-  initMap();
-  listTables();
-  if (window.location.protocol === 'file:') {
-    const notice = document.createElement('div');
-    notice.style.cssText = 'position:fixed;bottom:0;left:300px;right:0;z-index:998;background:rgba(153,27,27,0.95);color:#fecaca;padding:10px 20px;font-size:12px;text-align:center;';
-    notice.innerHTML = '<strong>Servidor requerido para links cortos.</strong> Cierre esta pagina, ejecute <code>start-server.bat</code> y abra <a href="http://localhost:8000" style="color:#86efac;">http://localhost:8000</a>';
-    document.body.appendChild(notice);
+(async () => {
+  try {
+    await loadConfig();
+    initMap();
+    listTables();
+    if (window.location.protocol === 'file:') {
+      const notice = document.createElement('div');
+      notice.style.cssText = 'position:fixed;bottom:0;left:300px;right:0;z-index:998;background:rgba(153,27,27,0.95);color:#fecaca;padding:10px 20px;font-size:12px;text-align:center;';
+      notice.innerHTML = '<strong>Servidor requerido para links cortos.</strong> Cierre esta pagina, ejecute <code>start-server.bat</code> y abra <a href="http://localhost:8000" style="color:#86efac;">http://localhost:8000</a>';
+      document.body.appendChild(notice);
+    }
+  } catch (err) {
+    console.error('GeoPortal init error:', err);
+    document.getElementById('loading-tables').textContent = 'Error de inicializacion: ' + err.message;
   }
-} catch (err) {
-  console.error('GeoPortal init error:', err);
-  document.getElementById('loading-tables').textContent = 'Error de inicializacion: ' + err.message;
-}
+})();
