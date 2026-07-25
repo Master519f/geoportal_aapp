@@ -9,7 +9,17 @@
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
-  <div class="sidebar">
+  <div id="login-screen" class="login-screen">
+    <div class="login-box">
+      <svg class="login-drop" viewBox="0 0 24 24" width="48" height="48"><path fill="#60a5fa" d="M12 2C12 2 5 11 5 16a7 7 0 0 0 14 0C19 11 12 2 12 2z"/></svg>
+      <h1>GeoPortal EPMAPAQ</h1>
+      <input type="text" id="login-user" placeholder="Usuario" autocomplete="off">
+      <input type="password" id="login-pass" placeholder="Contrasena">
+      <button id="login-btn">Ingresar</button>
+      <p id="login-error" class="login-error" style="display:none;">Credenciales incorrectas</p>
+    </div>
+  </div>
+  <div class="sidebar" style="display:none;" id="app-sidebar">
     <div class="sidebar-header">
       <h1>GeoPortal EPMAPAQ <svg class="water-drop" viewBox="0 0 24 24" width="20" height="20"><path fill="#60a5fa" d="M12 2C12 2 5 11 5 16a7 7 0 0 0 14 0C19 11 12 2 12 2z"/></svg></h1>
       <p>Módulo para datos en campo Inspecciones</p>

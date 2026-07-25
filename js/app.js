@@ -1,5 +1,22 @@
 const { createClient } = window.supabase;
 
+document.getElementById('login-btn').addEventListener('click', doLogin);
+document.getElementById('login-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('login-user').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+
+function doLogin() {
+  const u = document.getElementById('login-user').value.trim();
+  const p = document.getElementById('login-pass').value.trim();
+  if (u === 'usuario' && p === 'usuario') {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app-sidebar').style.display = 'flex';
+  } else {
+    document.getElementById('login-error').style.display = 'block';
+    document.getElementById('login-pass').value = '';
+    document.getElementById('login-pass').focus();
+  }
+}
+
 const SUPABASE_URL = 'https://befaumtpegfkwrephusu.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJlZmF1bXRwZWdma3dyZXBodXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4NTgyMDksImV4cCI6MjA5ODQzNDIwOX0.qxC1yhCNWdJ6cIPmtXjj8CB7YLU07ZV68QSfthSIRoI';
 const SCHEMA = 'epmapaq';
@@ -1811,16 +1828,25 @@ function showRouteInputSection(mode) {
 async function resolveGoogleMapsShortLink(url) {
   if (!url.includes('maps.app.goo.gl') && !url.includes('goo.gl/maps')) return null;
 
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 10000);
-    const resp = await fetch('/proxy?url=' + encodeURIComponent(url), { signal: controller.signal });
-    clearTimeout(timer);
-    if (resp.ok) {
-      const data = await resp.json();
-      if (data.ok && data.url) return data.url;
-    }
-  } catch (_) {}
+  const proxies = [
+    (u) => '/proxy?url=' + encodeURIComponent(u),
+    (u) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+    (u) => 'https://corsproxy.io/?' + encodeURIComponent(u)
+  ];
+
+  for (const buildUrl of proxies) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 10000);
+      const resp = await fetch(buildUrl(url), { signal: controller.signal, redirect: 'follow' });
+      clearTimeout(timer);
+      if (!resp.ok) continue;
+      const text = await resp.text();
+
+      const found = text.match(/https?:\/\/www\.google\.com\/maps[^"'\s<>]*/i);
+      if (found) return found[0].replace(/&amp;/g, '&');
+    } catch (_) {}
+  }
   return null;
 }
 
@@ -2343,10 +2369,6 @@ document.getElementById('btn-parse-gmaps').addEventListener('click', async () =>
 
   const isShort = url.includes('maps.app.goo.gl') || url.includes('goo.gl/maps');
   if (isShort) {
-    if (window.location.protocol === 'file:') {
-      showStatus('error', 'Links cortos requieren el servidor. Cierre esta pagina, ejecute start-server.bat y abra http://localhost:8000');
-      return;
-    }
     showStatus('info', 'Resolviendo link corto...');
     const resolved = await resolveGoogleMapsShortLink(url);
     if (resolved) {
