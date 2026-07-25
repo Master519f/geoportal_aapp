@@ -34,21 +34,18 @@ let supabasePublic = null;
 
 async function loadConfig() {
   const isLocal = window.location.hostname === 'localhost';
-  PROXY_BASE = isLocal ? '/proxy' : '';
+  PROXY_BASE = isLocal ? '/proxy' : window.location.origin + '/api/proxy';
   try {
-    const cfgUrl = isLocal ? '/api/config.js' : '/api/config.js';
-    const resp = await fetch(cfgUrl);
+    const resp = await fetch('/api/config.js');
     const cfg = await resp.json();
     SUPABASE_URL = cfg.SUPABASE_URL || SUPABASE_URL;
     SUPABASE_ANON_KEY = cfg.SUPABASE_ANON_KEY || SUPABASE_ANON_KEY;
     SCHEMA = cfg.SCHEMA || SCHEMA;
     FOTO_BUCKET = cfg.FOTO_BUCKET || FOTO_BUCKET;
-    if (cfg.PROXY_BASE) PROXY_BASE = cfg.PROXY_BASE;
   } catch (_) {}
   if (!SUPABASE_URL) {
     SUPABASE_URL = 'https://befaumtpegfkwrephusu.supabase.co';
     SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJlZmF1bXRwZWdma3dyZXBodXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4NTgyMDksImV4cCI6MjA5ODQzNDIwOX0.qxC1yhCNWdJ6cIPmtXjj8CB7YLU07ZV68QSfthSIRoI';
-    if (!PROXY_BASE) PROXY_BASE = '/proxy';
   }
   supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { db: { schema: SCHEMA } });
   supabasePublic = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
