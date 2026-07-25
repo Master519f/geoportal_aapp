@@ -1,7 +1,8 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: system-ui, -apple-system, sans-serif; background: #111; color: #eee; display: flex; height: 100vh; overflow: hidden; }
 
-.login-screen { position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; width: 100vw !important; height: 100vh !important; background: #0d1117; z-index: 99999 !important; display: flex !important; justify-content: center; align-items: center; }
+.login-screen { position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; width: 100vw !important; height: 100vh !important; background: #0d1117; z-index: 99999 !important; justify-content: center; align-items: center; }
+.login-screen.hidden { display: none !important; }
 .login-box { background: #1a1a2e; padding: 40px 36px; border-radius: 12px; text-align: center; box-shadow: 0 0 40px rgba(0,0,0,0.5); border: 1px solid #2a2a3e; width: 320px; max-width: 90vw; }
 .login-box h1 { font-size: 18px; color: #60a5fa; margin-bottom: 24px; }
 .login-drop { margin-bottom: 12px; }

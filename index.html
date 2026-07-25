@@ -25,7 +25,7 @@
       var u=document.getElementById('login-user').value.trim();
       var p=document.getElementById('login-pass').value.trim();
       if(u==='usuario'&&p==='usuario'){
-        document.getElementById('login-screen').style.display='none';
+        document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('app-sidebar').style.display='flex';
       }else{
         document.getElementById('login-error').style.display='block';

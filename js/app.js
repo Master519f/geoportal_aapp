@@ -8,7 +8,7 @@
   if (lb && ls && as) {
     function doLogin() {
       if (lu.value.trim() === 'usuario' && lp.value.trim() === 'usuario') {
-        ls.style.display = 'none';
+        ls.classList.add('hidden');
         as.style.display = 'flex';
       } else {
         le.style.display = 'block';
