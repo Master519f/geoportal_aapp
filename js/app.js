@@ -38,10 +38,10 @@ async function loadConfig() {
   try {
     const resp = await fetch('/api/config.js');
     const cfg = await resp.json();
-    SUPABASE_URL = cfg.SUPABASE_URL || SUPABASE_URL;
-    SUPABASE_ANON_KEY = cfg.SUPABASE_ANON_KEY || SUPABASE_ANON_KEY;
-    SCHEMA = cfg.SCHEMA || SCHEMA;
-    FOTO_BUCKET = cfg.FOTO_BUCKET || FOTO_BUCKET;
+    SUPABASE_URL = (cfg.SUPABASE_URL || '').trim() || SUPABASE_URL;
+    SUPABASE_ANON_KEY = (cfg.SUPABASE_ANON_KEY || '').trim() || SUPABASE_ANON_KEY;
+    SCHEMA = (cfg.SCHEMA || '').trim() || SCHEMA;
+    FOTO_BUCKET = (cfg.FOTO_BUCKET || '').trim() || FOTO_BUCKET;
   } catch (_) {}
   if (!SUPABASE_URL) {
     SUPABASE_URL = 'https://befaumtpegfkwrephusu.supabase.co';
@@ -813,7 +813,7 @@ function showFeatureInInfoPanel(layerName, props) {
       if (v === null || v === '') {
         display = '<em class="popup-null">Sin dato</em>';
       } else if (f.type === 'image' && v) {
-        display = `<a href="${esc(String(v))}" target="_blank" style="color:#60a5fa;text-decoration:underline;">Ver imagen</a>`;
+        display = `<img src="${esc(String(v))}" class="popup-image" onerror="this.style.display='none'" onclick="openLightbox('${esc(String(v))}')" style="cursor:pointer">`;
       } else if (f.type === 'date' && v) {
         const d = new Date(v);
         display = isNaN(d.getTime()) ? esc(String(v)) : esc(d.toLocaleDateString('es-EC'));
