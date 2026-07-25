@@ -1,9 +1,4 @@
-const { createClient } = window.supabase;
-
-document.getElementById('login-btn').addEventListener('click', doLogin);
-document.getElementById('login-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
-document.getElementById('login-user').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
-
+(() => {
 function doLogin() {
   const u = document.getElementById('login-user').value.trim();
   const p = document.getElementById('login-pass').value.trim();
@@ -16,6 +11,12 @@ function doLogin() {
     document.getElementById('login-pass').focus();
   }
 }
+document.getElementById('login-btn').addEventListener('click', doLogin);
+document.getElementById('login-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('login-user').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+})();
+
+const { createClient } = window.supabase;
 
 const SUPABASE_URL = 'https://befaumtpegfkwrephusu.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJlZmF1bXRwZWdma3dyZXBodXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4NTgyMDksImV4cCI6MjA5ODQzNDIwOX0.qxC1yhCNWdJ6cIPmtXjj8CB7YLU07ZV68QSfthSIRoI';
