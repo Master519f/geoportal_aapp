@@ -1835,25 +1835,37 @@ function showRouteInputSection(mode) {
 async function resolveGoogleMapsShortLink(url) {
   if (!url.includes('maps.app.goo.gl') && !url.includes('goo.gl/maps')) return null;
 
-  const proxies = [
-    (u) => '/proxy?url=' + encodeURIComponent(u),
-    (u) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
-    (u) => 'https://corsproxy.io/?' + encodeURIComponent(u)
-  ];
-
-  for (const buildUrl of proxies) {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 10000);
-      const resp = await fetch(buildUrl(url), { signal: controller.signal, redirect: 'follow' });
-      clearTimeout(timer);
-      if (!resp.ok) continue;
-      const text = await resp.text();
-
-      const found = text.match(/https?:\/\/www\.google\.com\/maps[^"'\s<>]*/i);
+  try {
+    const endpoint = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    const resp = await fetch(endpoint, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (data.status && data.status.url && data.status.url.includes('google.com/maps')) {
+      return data.status.url;
+    }
+    if (data.contents) {
+      const found = data.contents.match(/https?:\/\/www\.google\.com\/maps[^"'\s<>]*/i);
       if (found) return found[0].replace(/&amp;/g, '&');
-    } catch (_) {}
-  }
+    }
+  } catch (_) {}
+
+  try {
+    const endpoint = 'https://corsproxy.io/?' + encodeURIComponent(url);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    const resp = await fetch(endpoint, { signal: controller.signal, redirect: 'follow' });
+    clearTimeout(timer);
+    if (!resp.ok) return null;
+    const finalUrl = resp.url;
+    if (finalUrl && finalUrl.includes('google.com/maps')) return finalUrl;
+    const text = await resp.text();
+    const found = text.match(/https?:\/\/www\.google\.com\/maps[^"'\s<>]*/i);
+    if (found) return found[0].replace(/&amp;/g, '&');
+  } catch (_) {}
+
   return null;
 }
 
@@ -1867,9 +1879,13 @@ function parseGoogleMapsLink(url) {
     /maps\/search\/(-?\d+\.?\d*)\s*,\s*\+?(-?\d+\.?\d*)/,
     /@(-?\d+\.?\d*),(-?\d+\.?\d*)/,
     /!2d(-?\d+\.?\d*),!3d(-?\d+\.?\d*)/,
+    /!3d(-?\d+\.?\d*),!2d(-?\d+\.?\d*)/,
+    /!1d(-?\d+\.?\d*),!2d(-?\d+\.?\d*)/,
+    /!2d(-?\d+\.?\d*),!1d(-?\d+\.?\d*)/,
     /q=(-?\d+\.?\d*),(-?\d+\.?\d*)/,
     /ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/,
-    /center=(-?\d+\.?\d*),(-?\d+\.?\d*)/
+    /center=(-?\d+\.?\d*),(-?\d+\.?\d*)/,
+    /place\/[^@]*@(-?\d+\.?\d*),(-?\d+\.?\d*)/
   ];
   for (const pat of patterns) {
     const m = decoded.match(pat);
