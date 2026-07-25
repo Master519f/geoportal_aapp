@@ -1,21 +1,3 @@
-(() => {
-function doLogin() {
-  const u = document.getElementById('login-user').value.trim();
-  const p = document.getElementById('login-pass').value.trim();
-  if (u === 'usuario' && p === 'usuario') {
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app-sidebar').style.display = 'flex';
-  } else {
-    document.getElementById('login-error').style.display = 'block';
-    document.getElementById('login-pass').value = '';
-    document.getElementById('login-pass').focus();
-  }
-}
-document.getElementById('login-btn').addEventListener('click', doLogin);
-document.getElementById('login-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
-document.getElementById('login-user').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
-})();
-
 const { createClient } = window.supabase;
 
 const SUPABASE_URL = 'https://befaumtpegfkwrephusu.supabase.co';

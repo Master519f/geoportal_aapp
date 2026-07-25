@@ -19,6 +19,25 @@
       <p id="login-error" class="login-error" style="display:none;">Credenciales incorrectas</p>
     </div>
   </div>
+  <script>
+  (function(){
+    function doLogin(){
+      var u=document.getElementById('login-user').value.trim();
+      var p=document.getElementById('login-pass').value.trim();
+      if(u==='usuario'&&p==='usuario'){
+        document.getElementById('login-screen').style.display='none';
+        document.getElementById('app-sidebar').style.display='flex';
+      }else{
+        document.getElementById('login-error').style.display='block';
+        document.getElementById('login-pass').value='';
+        document.getElementById('login-pass').focus();
+      }
+    }
+    document.getElementById('login-btn').onclick=doLogin;
+    document.getElementById('login-pass').onkeydown=function(e){if(e.key==='Enter')doLogin()};
+    document.getElementById('login-user').onkeydown=function(e){if(e.key==='Enter')doLogin()};
+  })();
+  </script>
   <div class="sidebar" style="display:none;" id="app-sidebar">
     <div class="sidebar-header">
       <h1>GeoPortal EPMAPAQ <svg class="water-drop" viewBox="0 0 24 24" width="20" height="20"><path fill="#60a5fa" d="M12 2C12 2 5 11 5 16a7 7 0 0 0 14 0C19 11 12 2 12 2z"/></svg></h1>
