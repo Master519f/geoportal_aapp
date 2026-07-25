@@ -1835,37 +1835,39 @@ function showRouteInputSection(mode) {
 async function resolveGoogleMapsShortLink(url) {
   if (!url.includes('maps.app.goo.gl') && !url.includes('goo.gl/maps')) return null;
 
-  try {
-    const endpoint = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 15000);
-    const resp = await fetch(endpoint, { signal: controller.signal });
-    clearTimeout(timer);
-    if (!resp.ok) return null;
-    const data = await resp.json();
-    if (data.status && data.status.url && data.status.url.includes('google.com/maps')) {
-      return data.status.url;
-    }
-    if (data.contents) {
-      const found = data.contents.match(/https?:\/\/www\.google\.com\/maps[^"'\s<>]*/i);
-      if (found) return found[0].replace(/&amp;/g, '&');
-    }
-  } catch (_) {}
+  const proxies = [
+    (u) => 'https://api.allorigins.win/get?url=' + encodeURIComponent(u),
+    (u) => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
+    (u) => 'https://corsproxy.io/?' + encodeURIComponent(u)
+  ];
 
-  try {
-    const endpoint = 'https://corsproxy.io/?' + encodeURIComponent(url);
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 15000);
-    const resp = await fetch(endpoint, { signal: controller.signal, redirect: 'follow' });
-    clearTimeout(timer);
-    if (!resp.ok) return null;
-    const finalUrl = resp.url;
-    if (finalUrl && finalUrl.includes('google.com/maps')) return finalUrl;
-    const text = await resp.text();
-    const found = text.match(/https?:\/\/www\.google\.com\/maps[^"'\s<>]*/i);
-    if (found) return found[0].replace(/&amp;/g, '&');
-  } catch (_) {}
-
+  for (const buildUrl of proxies) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 20000);
+      const resp = await fetch(buildUrl(url), { signal: controller.signal, redirect: 'follow' });
+      clearTimeout(timer);
+      if (!resp.ok) continue;
+      const ct = resp.headers.get('content-type') || '';
+      if (ct.includes('json')) {
+        const data = await resp.json();
+        if (data.status && data.status.url && data.status.url.includes('google.com/maps')) return data.status.url;
+        if (data.contents) {
+          const found = data.contents.match(/https?:\/\/www\.google\.com\/maps[^"'\s<>]*/i);
+          if (found) return found[0].replace(/&amp;/g, '&');
+          const coordMatch = data.contents.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+          if (coordMatch) return 'https://www.google.com/maps/@' + coordMatch[1] + ',' + coordMatch[2];
+        }
+      } else {
+        const text = await resp.text();
+        if (resp.url && resp.url.includes('google.com/maps')) return resp.url;
+        const found = text.match(/https?:\/\/www\.google\.com\/maps[^"'\s<>]*/i);
+        if (found) return found[0].replace(/&amp;/g, '&');
+        const coordMatch = text.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+        if (coordMatch) return 'https://www.google.com/maps/@' + coordMatch[1] + ',' + coordMatch[2];
+      }
+    } catch (_) {}
+  }
   return null;
 }
 
@@ -2379,13 +2381,14 @@ document.getElementById('btn-add-coord').addEventListener('click', () => {
 });
 
 document.getElementById('btn-parse-gmaps').addEventListener('click', async () => {
-  const url = document.getElementById('input-gmaps-link').value.trim();
+  const inputEl = document.getElementById('input-gmaps-link');
+  const url = inputEl.value.trim();
   if (!url) { showStatus('info', 'Ingrese un link de Google Maps'); return; }
 
   let coords = parseGoogleMapsLink(url);
   if (coords) {
     addRoutePoint(coords.lat, coords.lng, 'Parada GMaps', 'stop');
-    document.getElementById('input-gmaps-link').value = '';
+    inputEl.value = '';
     showStatus('success', `Coordenadas extraidas: ${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`);
     return;
   }
@@ -2398,13 +2401,16 @@ document.getElementById('btn-parse-gmaps').addEventListener('click', async () =>
       coords = parseGoogleMapsLink(resolved);
       if (coords) {
         addRoutePoint(coords.lat, coords.lng, 'Parada GMaps', 'stop');
-        document.getElementById('input-gmaps-link').value = '';
+        inputEl.value = '';
         showStatus('success', `Coordenadas extraidas: ${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`);
         return;
       }
     }
     window.open(url, '_blank');
-    showStatus('error', 'No se pudo resolver. Se abrió en nueva pestaña. Copie la URL completa y peguela aquí.');
+    inputEl.value = '';
+    inputEl.placeholder = 'Pegue aqui la URL de Google Maps...';
+    inputEl.focus();
+    showStatus('info', 'Se abrio Google Maps. Cuando cargue, copie la URL de la barra de direcciones y peguela aqui.');
   } else {
     showStatus('error', 'No se pudieron extraer coordenadas. Use formato: https://www.google.com/maps/search/-1.016,-79.456');
   }
