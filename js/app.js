@@ -1,4 +1,28 @@
-const { createClient } = window.supabase;
+(() => {
+  var lb = document.getElementById('login-btn');
+  var lu = document.getElementById('login-user');
+  var lp = document.getElementById('login-pass');
+  var ls = document.getElementById('login-screen');
+  var as = document.getElementById('app-sidebar');
+  var le = document.getElementById('login-error');
+  if (lb && ls && as) {
+    function doLogin() {
+      if (lu.value.trim() === 'usuario' && lp.value.trim() === 'usuario') {
+        ls.style.display = 'none';
+        as.style.display = 'flex';
+      } else {
+        le.style.display = 'block';
+        lp.value = '';
+        lp.focus();
+      }
+    }
+    lb.onclick = doLogin;
+    lp.onkeydown = function(e) { if (e.key === 'Enter') doLogin(); };
+    lu.onkeydown = function(e) { if (e.key === 'Enter') doLogin(); };
+  }
+})();
+
+const { createClient } = window.supabase || {};
 
 const SUPABASE_URL = 'https://befaumtpegfkwrephusu.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJlZmF1bXRwZWdma3dyZXBodXN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4NTgyMDksImV4cCI6MjA5ODQzNDIwOX0.qxC1yhCNWdJ6cIPmtXjj8CB7YLU07ZV68QSfthSIRoI';
